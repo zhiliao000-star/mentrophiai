@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,8 +43,6 @@ export function ChatShell() {
     isReadonly,
     isLoading,
     votes,
-    currentModelId,
-    setCurrentModelId,
     showCreditCardAlert,
     setShowCreditCardAlert,
   } = useActiveChat();
@@ -92,6 +91,7 @@ export function ChatShell() {
               isLoading={isLoading}
               isReadonly={isReadonly}
               messages={messages}
+              selectedModelId={DEFAULT_CHAT_MODEL}
               onEditMessage={(msg) => {
                 const text = msg.parts
                   ?.filter((p) => p.type === "text")
@@ -101,7 +101,6 @@ export function ChatShell() {
                 setEditingMessage(msg);
               }}
               regenerate={regenerate}
-              selectedModelId={currentModelId}
               setMessages={setMessages}
               status={status}
               votes={votes}
@@ -120,8 +119,6 @@ export function ChatShell() {
                     setEditingMessage(null);
                     setInput("");
                   }}
-                  onModelChange={setCurrentModelId}
-                  selectedModelId={currentModelId}
                   selectedVisibilityType={visibilityType}
                   sendMessage={
                     editingMessage
@@ -156,8 +153,8 @@ export function ChatShell() {
           input={input}
           isReadonly={isReadonly}
           messages={messages}
+          selectedModelId={DEFAULT_CHAT_MODEL}
           regenerate={regenerate}
-          selectedModelId={currentModelId}
           selectedVisibilityType={visibilityType}
           sendMessage={sendMessage}
           setAttachments={setAttachments}

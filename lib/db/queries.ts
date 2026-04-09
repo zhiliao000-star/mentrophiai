@@ -33,8 +33,8 @@ import {
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
-const client = postgres(process.env.POSTGRES_URL ?? "");
-const db = drizzle(client);
+const connection = postgres(process.env.POSTGRES_URL!, { max: 10 });
+const db = drizzle(connection);
 
 export async function getUser(email: string): Promise<User[]> {
   try {
@@ -62,11 +62,14 @@ export async function createGuestUser() {
   const password = generateHashedPassword(generateUUID());
 
   try {
-    return await db.insert(user).values({ email, password }).returning({
-      id: user.id,
-      email: user.email,
-    });
-  } catch (_error) {
+    const result = await db
+      .insert(user)
+      .values({ email, password, isAnonymous: true })
+      .returning({ id: user.id, email: user.email });
+
+    return result;
+  } catch (error) {
+    console.error("Database error in createGuestUser:", error);
     throw new ChatbotError(
       "bad_request:database",
       "Failed to create guest user"

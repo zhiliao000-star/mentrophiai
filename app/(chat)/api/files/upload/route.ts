@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -21,6 +21,11 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   if (request.body === null) {
     return new Response("Request body is empty", { status: 400 });
@@ -49,11 +54,21 @@ export async function POST(request: Request) {
     const fileBuffer = await file.arrayBuffer();
 
     try {
-      const data = await put(`${safeName}`, fileBuffer, {
-        access: "public",
-      });
+      const { error } = await supabase.storage
+        .from("uploads")
+        .upload(safeName, fileBuffer, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-      return NextResponse.json(data);
+      if (error) {
+        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+      }
+
+      const publicUrl = supabase.storage.from("uploads").getPublicUrl(safeName)
+        .data.publicUrl;
+
+      return NextResponse.json({ url: publicUrl });
     } catch (_error) {
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
