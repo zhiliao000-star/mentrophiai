@@ -29,9 +29,7 @@ export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   createdAt: timestamp("createdAt").notNull(),
   title: text("title").notNull(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => user.id),
+  userId: uuid("userId").notNull(),
   visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
@@ -80,9 +78,7 @@ export const document = pgTable(
     kind: varchar("text", { enum: ["text", "code", "image", "sheet"] })
       .notNull()
       .default("text"),
-    userId: uuid("userId")
-      .notNull()
-      .references(() => user.id),
+    userId: uuid("userId").notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.createdAt] }),
@@ -101,9 +97,7 @@ export const suggestion = pgTable(
     suggestedText: text("suggestedText").notNull(),
     description: text("description"),
     isResolved: boolean("isResolved").notNull().default(false),
-    userId: uuid("userId")
-      .notNull()
-      .references(() => user.id),
+    userId: uuid("userId").notNull(),
     createdAt: timestamp("createdAt").notNull(),
   },
   (table) => ({
