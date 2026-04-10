@@ -37,7 +37,12 @@ import { ChatbotError } from "@/lib/errors";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 import type { ChatMessage } from "@/lib/types";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import {
+  convertToUIMessages,
+  generateUUID,
+  getTextFromMessage,
+} from "@/lib/utils";
+import { hindsightClient, recallMemoriesForPrompt } from "@/lib/hindsight";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -65,6 +70,8 @@ export async function POST(request: Request) {
 
   try {
     const { id, message, messages, selectedVisibilityType } = requestBody;
+    const userMessageText =
+      message?.role === "user" ? getTextFromMessage(message) : "";
 
     const [, user] = await Promise.all([
       checkBotId().catch(() => null),
@@ -175,6 +182,15 @@ export async function POST(request: Request) {
     const capabilities = modelCapabilities[chatModel];
     const isReasoningModel = capabilities?.reasoning === true;
     const supportsTools = capabilities?.tools === true;
+    const memoryContext =
+      userMessageText.length > 0
+        ? await recallMemoriesForPrompt(user.id, userMessageText).catch(
+            (error) => {
+              console.error("Hindsight recall failed:", error);
+              return null;
+            }
+          )
+        : null;
 
     const modelMessages = await convertToModelMessages(uiMessages);
 
@@ -183,7 +199,14 @@ export async function POST(request: Request) {
       execute: async ({ writer: dataStream }) => {
         const result = streamText({
           model: getLanguageModel(chatModel),
-          system: systemPrompt({ requestHints, supportsTools }),
+          system: [
+            systemPrompt({ requestHints, supportsTools }),
+            memoryContext
+              ? `Relevant long-term memory for this user:\n${memoryContext}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -271,6 +294,30 @@ export async function POST(request: Request) {
               chatId: id,
             })),
           });
+        }
+
+        const assistantReply = finishedMessages
+          .filter((currentMessage) => currentMessage.role === "assistant")
+          .map((currentMessage) => getTextFromMessage(currentMessage))
+          .join("\n\n")
+          .trim();
+
+        if (userMessageText && assistantReply) {
+          void hindsightClient
+            .retain(
+              user.id,
+              `User: ${userMessageText}\nAssistant: ${assistantReply}`,
+              {
+                context: "chat conversation",
+                metadata: {
+                  source: "chat",
+                  chatId: id,
+                },
+              }
+            )
+            .catch((error) => {
+              console.error("Hindsight retain failed:", error);
+            });
         }
       },
       onError: (error) => {
