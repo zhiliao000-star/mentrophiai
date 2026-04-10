@@ -224,16 +224,12 @@ const PurePreviewMessage = ({
 
       if (state === "input-available" || state === "input-streaming") {
         return (
-          <div className="w-[min(100%,450px)]" key={toolCallId}>
-            <Tool className="w-full" defaultOpen={true}>
-              <ToolHeader state={state} type="tool-searchWeb" />
-              <ToolContent>
-                <div className="px-4 py-3 text-muted-foreground text-sm">
-                  Searching the web...
-                </div>
-              </ToolContent>
-            </Tool>
-          </div>
+          <MessageReasoning
+            isLoading={true}
+            key={toolCallId}
+            label="search"
+            reasoning=""
+          />
         );
       }
 
