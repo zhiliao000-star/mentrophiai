@@ -1066,6 +1066,61 @@ export const PlayIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
+export const WaveformIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+    >
+      <path
+        d="M1.25 8H2.75"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M4.25 5V11"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M7 3.5V12.5"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9.75 5.75V10.25"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M12.5 4.25V11.75"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M14.25 8H14.75"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+};
+
 export const PythonIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg

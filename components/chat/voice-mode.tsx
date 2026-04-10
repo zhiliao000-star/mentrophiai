@@ -65,11 +65,18 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
 
   const pendingAssistantCountRef = useRef<number | null>(null);
   const lastSpokenAssistantIdRef = useRef<string | null>(null);
+  const shouldAutoLoopRef = useRef(false);
+  const assistantCountRef = useRef(0);
+  const startListeningRef = useRef<(() => Promise<void>) | null>(null);
 
   const assistantMessages = useMemo(
     () => messages.filter((message) => message.role === "assistant"),
     [messages]
   );
+
+  useEffect(() => {
+    assistantCountRef.current = assistantMessages.length;
+  }, [assistantMessages.length]);
 
   const visualState: OrbState =
     orbState === "error" ? "error" : "speaking";
@@ -138,6 +145,8 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   }, [stopMicMonitoring]);
 
   const cleanupVoiceMode = useCallback(() => {
+    shouldAutoLoopRef.current = false;
+
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current.ondataavailable = null;
@@ -148,7 +157,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     pendingAssistantCountRef.current = null;
     setVolume(0);
     setOrbState("idle");
-    setCaption("Tap to start talking");
+    setCaption("Listening will start automatically");
   }, [stopAudioPlayback, stopRecording]);
 
   const monitorAnalyser = useCallback(
@@ -254,8 +263,14 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         lastSpokenAssistantIdRef.current = assistantMessageId;
         setVolume(0);
         setOrbState("idle");
-        setCaption("Tap to start talking");
+        setCaption("Listening again...");
         stopAudioPlayback();
+
+        if (shouldAutoLoopRef.current) {
+          window.setTimeout(() => {
+            void startListeningRef.current?.();
+          }, 500);
+        }
       };
 
       audio.onerror = () => {
@@ -325,11 +340,16 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
 
           if (!text) {
             setOrbState("idle");
-            setCaption("I couldn't hear anything. Tap to try again");
+            setCaption("I couldn't hear anything. Listening again...");
+            if (shouldAutoLoopRef.current) {
+              window.setTimeout(() => {
+                void startListeningRef.current?.();
+              }, 500);
+            }
             return;
           }
 
-          const assistantCountBefore = assistantMessages.length;
+          const assistantCountBefore = assistantCountRef.current;
           pendingAssistantCountRef.current = assistantCountBefore;
           setOrbState("connecting");
           setCaption("Thinking...");
@@ -362,33 +382,41 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       setCaption("Microphone access failed");
       toast.error("Microphone access failed. Please check browser permissions.");
     }
-  }, [
-    assistantMessages.length,
-    isOpen,
-    monitorAnalyser,
-    sendMessage,
-    stopAudioPlayback,
-    stopRecording,
-    transcribeAudio,
-  ]);
+  }, [isOpen, monitorAnalyser, sendMessage, stopAudioPlayback, stopRecording, transcribeAudio]);
+
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  }, [startListening]);
 
   const stopListening = useCallback(() => {
     if (orbState === "listening") {
+      shouldAutoLoopRef.current = false;
       setCaption("Processing...");
       stopRecording();
     } else if (orbState === "speaking") {
+      shouldAutoLoopRef.current = false;
       stopAudioPlayback();
       setVolume(0);
       setOrbState("idle");
-      setCaption("Tap to start talking");
+      setCaption("Listening stopped");
     }
   }, [orbState, stopAudioPlayback, stopRecording]);
 
   useEffect(() => {
     if (!isOpen) {
       cleanupVoiceMode();
+      return;
     }
-  }, [cleanupVoiceMode, isOpen]);
+
+    shouldAutoLoopRef.current = true;
+    setCaption("Starting voice mode...");
+
+    window.setTimeout(() => {
+      if (shouldAutoLoopRef.current) {
+        void startListening();
+      }
+    }, 150);
+  }, [cleanupVoiceMode, isOpen, startListening]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -415,7 +443,12 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     if (!latestAssistant) {
       pendingAssistantCountRef.current = null;
       setOrbState("idle");
-      setCaption("Tap to start talking");
+      setCaption("Listening again...");
+      if (shouldAutoLoopRef.current) {
+        window.setTimeout(() => {
+          void startListening();
+        }, 400);
+      }
       return;
     }
 
@@ -432,7 +465,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         error instanceof Error ? error.message : "Failed to read the reply aloud"
       );
     });
-  }, [assistantMessages, isOpen, speakText, status]);
+  }, [assistantMessages, isOpen, speakText, startListening, status]);
 
   useEffect(() => {
     return () => {

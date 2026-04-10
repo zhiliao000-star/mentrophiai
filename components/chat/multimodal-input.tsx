@@ -29,7 +29,12 @@ import {
   PromptInputTools,
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
-import { MicrophoneIcon, PaperclipIcon, StopIcon } from "./icons";
+import {
+  MicrophoneIcon,
+  PaperclipIcon,
+  StopIcon,
+  WaveformIcon,
+} from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import {
   type SlashCommand,
@@ -44,6 +49,23 @@ const activeModel = chatModels[0] ?? {
   name: "Auto",
   provider: "nvidia",
 };
+
+function getSupportedRecordingMimeType() {
+  if (typeof MediaRecorder === "undefined") {
+    return null;
+  }
+
+  const preferredTypes = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+  ];
+
+  return (
+    preferredTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) ??
+    null
+  );
+}
 
 function PureMultimodalInput({
   chatId,
@@ -185,10 +207,15 @@ function PureMultimodalInput({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const currentMimeTypeRef = useRef<string>("audio/webm");
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
+  const [isVoiceInputRecording, setIsVoiceInputRecording] = useState(false);
 
   const submitForm = useCallback(() => {
     window.history.pushState(
@@ -335,6 +362,119 @@ function PureMultimodalInput({
     [setAttachments, uploadFile]
   );
 
+  const transcribeVoiceInput = useCallback(async (audioBlob: Blob) => {
+    const formData = new FormData();
+    const extension =
+      currentMimeTypeRef.current.includes("mp4") ||
+      currentMimeTypeRef.current.includes("m4a")
+        ? "mp4"
+        : "webm";
+
+    formData.append("file", audioBlob, `voice-input.${extension}`);
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/transcribe`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const payload = (await response.json().catch(() => null)) as
+      | { text?: string; error?: string }
+      | null;
+
+    if (!response.ok) {
+      throw new Error(payload?.error || "Failed to transcribe audio");
+    }
+
+    return payload?.text?.trim() ?? "";
+  }, []);
+
+  const stopVoiceInputRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+
+    if (!recorder) {
+      return;
+    }
+
+    if (recorder.state !== "inactive") {
+      recorder.stop();
+    }
+
+    mediaRecorderRef.current = null;
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    setIsVoiceInputRecording(false);
+  }, []);
+
+  const startVoiceInputRecording = useCallback(async () => {
+    if (status === "submitted") {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("Voice recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getSupportedRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      currentMimeTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+      mediaRecorderRef.current = recorder;
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: currentMimeTypeRef.current || "audio/webm",
+        });
+        audioChunksRef.current = [];
+
+        try {
+          const transcribedText = await transcribeVoiceInput(audioBlob);
+
+          if (!transcribedText) {
+            toast.error("I couldn't hear anything. Please try again.");
+            return;
+          }
+
+          setInput((currentInput) =>
+            currentInput.trim()
+              ? `${currentInput.trimEnd()} ${transcribedText}`
+              : transcribedText
+          );
+          textareaRef.current?.focus();
+        } catch (error) {
+          console.error("Voice input transcription failed:", error);
+          toast.error(
+            error instanceof Error ? error.message : "Failed to transcribe audio"
+          );
+        }
+      };
+
+      recorder.start();
+      setIsVoiceInputRecording(true);
+    } catch (error) {
+      console.error("Voice input recording failed:", error);
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      setIsVoiceInputRecording(false);
+      toast.error("Microphone access failed. Please check browser permissions.");
+    }
+  }, [setInput, status, transcribeVoiceInput]);
+
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) {
@@ -344,6 +484,13 @@ function PureMultimodalInput({
     textarea.addEventListener("paste", handlePaste);
     return () => textarea.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
+
+  useEffect(() => {
+    return () => {
+      mediaRecorderRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
@@ -500,6 +647,14 @@ function PureMultimodalInput({
               status={status}
             />
             <VoiceInputButton
+              isRecording={isVoiceInputRecording}
+              onPressStart={() => {
+                void startVoiceInputRecording();
+              }}
+              onPressEnd={stopVoiceInputRecording}
+              status={status}
+            />
+            <OpenVoiceModeButton
               onClick={onOpenVoiceMode}
               status={status}
             />
@@ -592,22 +747,39 @@ function PureAttachmentsButton({
 const AttachmentsButton = memo(PureAttachmentsButton);
 
 function PureVoiceInputButton({
-  onClick,
+  isRecording,
+  onPressStart,
+  onPressEnd,
   status,
 }: {
-  onClick: () => void;
+  isRecording: boolean;
+  onPressStart: () => void;
+  onPressEnd: () => void;
   status: UseChatHelpers<ChatMessage>["status"];
 }) {
   const disabled = status === "submitted";
 
   return (
     <Button
-      className="h-7 w-7 rounded-lg border border-border/40 p-1 text-foreground transition-colors hover:border-border hover:text-foreground"
+      className={cn(
+        "h-7 w-7 rounded-lg border border-border/40 p-1 transition-colors hover:border-border hover:text-foreground",
+        isRecording ? "border-red-400/70 text-red-500" : "text-foreground"
+      )}
       data-testid="voice-input-button"
       disabled={disabled}
-      onClick={(event) => {
+      onMouseDown={(event) => {
         event.preventDefault();
-        onClick();
+        onPressStart();
+      }}
+      onMouseUp={onPressEnd}
+      onMouseLeave={onPressEnd}
+      onTouchEnd={(event) => {
+        event.preventDefault();
+        onPressEnd();
+      }}
+      onTouchStart={(event) => {
+        event.preventDefault();
+        onPressStart();
       }}
       variant="ghost"
     >
@@ -617,6 +789,31 @@ function PureVoiceInputButton({
 }
 
 const VoiceInputButton = memo(PureVoiceInputButton);
+
+function PureOpenVoiceModeButton({
+  onClick,
+  status,
+}: {
+  onClick: () => void;
+  status: UseChatHelpers<ChatMessage>["status"];
+}) {
+  return (
+    <Button
+      className="h-7 w-7 rounded-lg border border-border/40 p-1 text-foreground transition-colors hover:border-border hover:text-foreground"
+      data-testid="open-voice-mode-button"
+      disabled={status === "submitted"}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick();
+      }}
+      variant="ghost"
+    >
+      <WaveformIcon size={14} />
+    </Button>
+  );
+}
+
+const OpenVoiceModeButton = memo(PureOpenVoiceModeButton);
 
 function PureStopButton({
   stop,
