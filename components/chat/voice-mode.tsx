@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useActiveChat } from "@/hooks/use-active-chat";
 import type { ChatMessage } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { CrossIcon } from "./icons";
 
 function getTextFromMessage(message: ChatMessage) {
@@ -71,6 +70,15 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     () => messages.filter((message) => message.role === "assistant"),
     [messages]
   );
+
+  const visualState: OrbState =
+    orbState === "error" ? "error" : "speaking";
+  const visualVolume =
+    orbState === "idle"
+      ? 0.08
+      : orbState === "connecting"
+        ? 0.18
+        : Math.max(volume, 0.12);
 
   const stopMicMonitoring = useCallback(() => {
     if (micFrameRef.current) {
@@ -437,35 +445,38 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(119,255,214,0.10),transparent_30%),radial-gradient(circle_at_80%_18%,rgba(119,180,255,0.12),transparent_28%),radial-gradient(circle_at_50%_82%,rgba(255,255,255,0.05),transparent_35%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent_22%,transparent_78%,rgba(255,255,255,0.03))]" />
+
       <button
-        className="absolute top-5 right-5 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+        className="absolute top-5 right-5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
         onClick={onClose}
         type="button"
       >
         <CrossIcon />
       </button>
 
-      <div className="flex w-full max-w-3xl flex-col items-center justify-center px-6">
-        <div
-          className={cn(
-            "mb-8 flex h-[340px] w-[340px] items-center justify-center rounded-full border border-white/6 bg-white/[0.03] shadow-[0_0_120px_rgba(255,255,255,0.05)]"
-          )}
-        >
+      <div className="relative z-10 flex w-full max-w-4xl flex-col items-center justify-center px-6">
+        <div className="mb-10 flex items-center justify-center">
           <Orb
             onStart={() => {
               void startListening();
             }}
             onStop={stopListening}
-            size={240}
-            state={orbState}
+            size={360}
+            state={visualState}
+            style={{
+              color: "#ffffff",
+              filter: "brightness(1.2) contrast(1.08)",
+            }}
             theme="bars"
-            volume={volume}
+            volume={visualVolume}
           />
         </div>
 
         <div className="max-w-xl text-center">
-          <p className="mb-3 font-medium text-2xl tracking-tight">
+          <p className="mb-3 font-medium text-[2rem] tracking-[-0.04em] text-white">
             {orbState === "listening"
               ? "Listening"
               : orbState === "speaking"
@@ -476,7 +487,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
                     ? "Something went wrong"
                     : "Voice mode"}
           </p>
-          <p className="text-base text-white/55">{caption}</p>
+          <p className="text-[15px] text-white/52">{caption}</p>
         </div>
       </div>
     </div>
