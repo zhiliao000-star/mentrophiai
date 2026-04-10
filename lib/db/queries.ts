@@ -17,8 +17,6 @@ import postgres from "postgres";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
-import { generateUUID } from "../utils";
-import { getSupabaseAdmin } from "../supabase/admin";
 import {
   type Chat,
   chat,
@@ -28,11 +26,8 @@ import {
   type Suggestion,
   stream,
   suggestion,
-  type User,
-  user,
   vote,
 } from "./schema";
-import { generateHashedPassword } from "./utils";
 
 let db: ReturnType<typeof drizzle> | null = null;
 
@@ -43,64 +38,6 @@ function getDb() {
   }
 
   return db;
-}
-
-export async function getUser(email: string): Promise<User[]> {
-  try {
-    return await getDb().select().from(user).where(eq(user.email, email));
-  } catch (_error) {
-    throw new ChatbotError(
-      "bad_request:database",
-      "Failed to get user by email"
-    );
-  }
-}
-
-export async function createUser(email: string, password: string) {
-  const hashedPassword = generateHashedPassword(password);
-
-  try {
-    return await getDb().insert(user).values({ email, password: hashedPassword });
-  } catch (_error) {
-    throw new ChatbotError("bad_request:database", "Failed to create user");
-  }
-}
-
-export async function createGuestUser() {
-  const email = `guest-${Date.now()}`;
-
-  try {
-    const supabase = getSupabaseAdmin();
-    const { data, error } = (await ((supabase.from("users") as any)
-      .insert([
-        {
-          id: generateUUID(),
-          email,
-          is_guest: true,
-        },
-      ])
-      .select("id,email")
-      .single())) as {
-      data: { id: string; email: string } | null;
-      error: { message: string } | null;
-    };
-
-    if (error) {
-      console.error("DB ERROR:", error);
-      throw new ChatbotError(
-        "bad_request:database",
-        "Failed to create guest user"
-      );
-    }
-
-    return data ? [data] : [];
-  } catch (error) {
-    console.error("Database error in createGuestUser:", error);
-    throw new ChatbotError(
-      "bad_request:database",
-      "Failed to create guest user"
-    );
-  }
 }
 
 export async function saveChat({

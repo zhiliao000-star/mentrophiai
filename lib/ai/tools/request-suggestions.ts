@@ -1,5 +1,4 @@
 import { Output, streamText, tool, type UIMessageStreamWriter } from "ai";
-import type { Session } from "next-auth";
 import { z } from "zod";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@/lib/db/schema";
@@ -8,13 +7,13 @@ import { generateUUID } from "@/lib/utils";
 import { getLanguageModel } from "../providers";
 
 type RequestSuggestionsProps = {
-  session: Session;
+  userId: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   modelId: string;
 };
 
 export const requestSuggestions = ({
-  session,
+  userId,
   dataStream,
   modelId,
 }: RequestSuggestionsProps) =>
@@ -37,7 +36,7 @@ export const requestSuggestions = ({
         };
       }
 
-      if (document.userId !== session.user?.id) {
+      if (document.userId !== userId) {
         return { error: "Forbidden" };
       }
 
@@ -98,18 +97,14 @@ export const requestSuggestions = ({
         }
       }
 
-      if (session.user?.id) {
-        const userId = session.user.id;
-
-        await saveSuggestions({
-          suggestions: suggestions.map((suggestion) => ({
-            ...suggestion,
-            userId,
-            createdAt: new Date(),
-            documentCreatedAt: document.createdAt,
-          })),
-        });
-      }
+      await saveSuggestions({
+        suggestions: suggestions.map((suggestion) => ({
+          ...suggestion,
+          userId,
+          createdAt: new Date(),
+          documentCreatedAt: document.createdAt,
+        })),
+      });
 
       return {
         id: documentId,

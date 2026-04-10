@@ -1,8 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
-import { auth } from "@/app/(auth)/auth";
+import { createSupabaseServerClient, getAuthenticatedUser } from "@/lib/supabase/server";
 
 const FileSchema = z.object({
   file: z
@@ -16,16 +14,14 @@ const FileSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const [user, supabase] = await Promise.all([
+    getAuthenticatedUser(),
+    createSupabaseServerClient(),
+  ]);
 
-  if (!session) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 
   if (request.body === null) {
     return new Response("Request body is empty", { status: 400 });

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +13,8 @@ type SupabaseUser = {
 };
 
 export function GoogleOAuthCard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -32,6 +36,7 @@ export function GoogleOAuthCard() {
             ? { id: session.user.id, email: session.user.email }
             : null
         );
+        router.refresh();
       }
     );
 
@@ -43,10 +48,14 @@ export function GoogleOAuthCard() {
 
   async function loginWithGoogle() {
     setBusy(true);
+    const next = searchParams.get("next") ?? "/";
+    const redirectTo = new URL("/auth/callback", window.location.origin);
+    redirectTo.searchParams.set("next", next);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: redirectTo.toString(),
       },
     });
     if (error) {
@@ -58,6 +67,8 @@ export function GoogleOAuthCard() {
   async function logout() {
     setBusy(true);
     await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
     setBusy(false);
   }
 
@@ -83,14 +94,19 @@ export function GoogleOAuthCard() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {user ? (
-            <Button
-              className="rounded-full"
-              disabled={busy}
-              onClick={logout}
-              variant="secondary"
-            >
-              Logout
-            </Button>
+            <>
+              <Button asChild className="rounded-full" variant="secondary">
+                <Link href="/">Open chat</Link>
+              </Button>
+              <Button
+                className="rounded-full"
+                disabled={busy}
+                onClick={logout}
+                variant="secondary"
+              >
+                Logout
+              </Button>
+            </>
           ) : (
             <Button
               className={cn("rounded-full bg-foreground text-background")}

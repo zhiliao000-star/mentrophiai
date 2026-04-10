@@ -1,7 +1,6 @@
 "use server";
 
 import { generateText, type UIMessage } from "ai";
-import { auth } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { titlePrompt } from "@/lib/ai/prompts";
 import { getTitleModel } from "@/lib/ai/providers";
@@ -11,6 +10,7 @@ import {
   getMessageById,
   updateChatVisibilityById,
 } from "@/lib/db/queries";
+import { getAuthenticatedUser } from "@/lib/supabase/server";
 import { getTextFromMessage } from "@/lib/utils";
 
 export async function generateTitleFromUserMessage({
@@ -30,8 +30,8 @@ export async function generateTitleFromUserMessage({
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getAuthenticatedUser();
+  if (!user?.id) {
     throw new Error("Unauthorized");
   }
 
@@ -41,7 +41,7 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
   }
 
   const chat = await getChatById({ id: message.chatId });
-  if (!chat || chat.userId !== session.user.id) {
+  if (!chat || chat.userId !== user.id) {
     throw new Error("Unauthorized");
   }
 
@@ -58,13 +58,13 @@ export async function updateChatVisibility({
   chatId: string;
   visibility: VisibilityType;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const user = await getAuthenticatedUser();
+  if (!user?.id) {
     throw new Error("Unauthorized");
   }
 
   const chat = await getChatById({ id: chatId });
-  if (!chat || chat.userId !== session.user.id) {
+  if (!chat || chat.userId !== user.id) {
     throw new Error("Unauthorized");
   }
 

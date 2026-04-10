@@ -1,6 +1,6 @@
-import { auth } from "@/app/(auth)/auth";
 import { getSuggestionsByDocumentId } from "@/lib/db/queries";
 import { ChatbotError } from "@/lib/errors";
+import { getAuthenticatedUser } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,9 +13,9 @@ export async function GET(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const user = await getAuthenticatedUser();
 
-  if (!session?.user) {
+  if (!user) {
     return new ChatbotError("unauthorized:suggestions").toResponse();
   }
 
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     return Response.json([], { status: 200 });
   }
 
-  if (suggestion.userId !== session.user.id) {
+  if (suggestion.userId !== user.id) {
     return new ChatbotError("forbidden:api").toResponse();
   }
 

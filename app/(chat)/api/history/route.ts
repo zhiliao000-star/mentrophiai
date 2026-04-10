@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
-import { auth } from "@/app/(auth)/auth";
 import { deleteAllChatsByUserId, getChatsByUserId } from "@/lib/db/queries";
 import { ChatbotError } from "@/lib/errors";
+import { getAuthenticatedUser } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -20,14 +20,14 @@ export async function GET(request: NextRequest) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const user = await getAuthenticatedUser();
 
-  if (!session?.user) {
+  if (!user) {
     return new ChatbotError("unauthorized:chat").toResponse();
   }
 
   const chats = await getChatsByUserId({
-    id: session.user.id,
+    id: user.id,
     limit,
     startingAfter,
     endingBefore,
@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE() {
-  const session = await auth();
+  const user = await getAuthenticatedUser();
 
-  if (!session?.user) {
+  if (!user) {
     return new ChatbotError("unauthorized:chat").toResponse();
   }
 
-  const result = await deleteAllChatsByUserId({ userId: session.user.id });
+  const result = await deleteAllChatsByUserId({ userId: user.id });
 
   return Response.json(result, { status: 200 });
 }

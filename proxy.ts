@@ -1,41 +1,67 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { guestRegex, isDevelopmentEnvironment } from "./lib/constants";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { getSupabasePublicEnv } from "./lib/supabase/env";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const { supabaseUrl, supabaseAnonKey } = getSupabasePublicEnv();
+
+  let response = NextResponse.next({
+    request,
+  });
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value } of cookiesToSet) {
+          request.cookies.set(name, value);
+        }
+
+        response = NextResponse.next({
+          request,
+        });
+
+        for (const { name, value, options } of cookiesToSet) {
+          response.cookies.set(name, value, options as CookieOptions);
+        }
+      },
+    },
+  });
 
   if (pathname.startsWith("/ping")) {
     return new Response("pong", { status: 200 });
   }
 
-  if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (pathname.startsWith("/api/")) {
+    return response;
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-    secureCookie: !isDevelopmentEnvironment,
-  });
-
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const publicPaths = new Set(["/login", "/register", "/auth/callback"]);
+  const isPublicPath = publicPaths.has(pathname);
 
-  if (!token) {
-    const redirectUrl = encodeURIComponent(new URL(request.url).pathname);
+  if (!user && !isPublicPath) {
+    const redirectUrl = encodeURIComponent(
+      `${request.nextUrl.pathname}${request.nextUrl.search}`
+    );
 
     return NextResponse.redirect(
-      new URL(`${base}/api/auth/guest?redirectUrl=${redirectUrl}`, request.url)
+      new URL(`${base}/login?next=${redirectUrl}`, request.url)
     );
   }
 
-  const isGuest = guestRegex.test(token?.email ?? "");
-
-  if (token && !isGuest && ["/login", "/register"].includes(pathname)) {
+  if (user && isPublicPath) {
     return NextResponse.redirect(new URL(`${base}/`, request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

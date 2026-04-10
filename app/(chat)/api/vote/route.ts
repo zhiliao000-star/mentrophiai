@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { auth } from "@/app/(auth)/auth";
 import { getChatById, getVotesByChatId, voteMessage } from "@/lib/db/queries";
 import { ChatbotError } from "@/lib/errors";
+import { getAuthenticatedUser } from "@/lib/supabase/server";
 
 const voteSchema = z.object({
   chatId: z.string(),
@@ -20,9 +20,9 @@ export async function GET(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const user = await getAuthenticatedUser();
 
-  if (!session?.user) {
+  if (!user) {
     return new ChatbotError("unauthorized:vote").toResponse();
   }
 
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     return new ChatbotError("not_found:chat").toResponse();
   }
 
-  if (chat.userId !== session.user.id) {
+  if (chat.userId !== user.id) {
     return new ChatbotError("forbidden:vote").toResponse();
   }
 
@@ -58,9 +58,9 @@ export async function PATCH(request: Request) {
     ).toResponse();
   }
 
-  const session = await auth();
+  const user = await getAuthenticatedUser();
 
-  if (!session?.user) {
+  if (!user) {
     return new ChatbotError("unauthorized:vote").toResponse();
   }
 
@@ -70,7 +70,7 @@ export async function PATCH(request: Request) {
     return new ChatbotError("not_found:vote").toResponse();
   }
 
-  if (chat.userId !== session.user.id) {
+  if (chat.userId !== user.id) {
     return new ChatbotError("forbidden:vote").toResponse();
   }
 

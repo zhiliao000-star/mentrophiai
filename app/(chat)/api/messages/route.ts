@@ -1,5 +1,5 @@
-import { auth } from "@/app/(auth)/auth";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
+import { getAuthenticatedUser } from "@/lib/supabase/server";
 import { convertToUIMessages } from "@/lib/utils";
 
 export async function GET(request: Request) {
@@ -10,8 +10,8 @@ export async function GET(request: Request) {
     return Response.json({ error: "chatId required" }, { status: 400 });
   }
 
-  const [session, chat, messages] = await Promise.all([
-    auth(),
+  const [user, chat, messages] = await Promise.all([
+    getAuthenticatedUser(),
     getChatById({ id: chatId }),
     getMessagesByChatId({ id: chatId }),
   ]);
@@ -27,12 +27,12 @@ export async function GET(request: Request) {
 
   if (
     chat.visibility === "private" &&
-    (!session?.user || session.user.id !== chat.userId)
+    (!user || user.id !== chat.userId)
   ) {
     return Response.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const isReadonly = !session?.user || session.user.id !== chat.userId;
+  const isReadonly = !user || user.id !== chat.userId;
 
   return Response.json({
     messages: convertToUIMessages(messages),
