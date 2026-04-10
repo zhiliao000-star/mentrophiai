@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createSupabaseServerClient, getAuthenticatedUser } from "@/lib/supabase/server";
+
+export const runtime = "nodejs";
 
 const FileSchema = z.object({
   file: z
@@ -62,11 +65,26 @@ function getStoragePath(userId: string, filename: string) {
   return `${userId}/${Date.now()}-${safeName}`;
 }
 
+function getStorageAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+    );
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 export async function POST(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getAuthenticatedUser(),
-    createSupabaseServerClient(),
-  ]);
+  const [user] = await Promise.all([getAuthenticatedUser(), createSupabaseServerClient()]);
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -97,12 +115,24 @@ export async function POST(request: Request) {
     const filename = file.name;
     const storagePath = getStoragePath(user.id, filename);
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const extractedText = trimExtractedText(
-      await extractTextFromFile(file, fileBuffer)
-    );
+    let extractedText = "";
 
     try {
-      const { error } = await supabase.storage
+      extractedText = trimExtractedText(
+        await extractTextFromFile(file, fileBuffer)
+      );
+    } catch (error) {
+      console.error("File text extraction failed:", {
+        filename,
+        type: file.type,
+        error,
+      });
+    }
+
+    try {
+      const supabaseAdmin = getStorageAdminClient();
+
+      const { error } = await supabaseAdmin.storage
         .from("uploads")
         .upload(storagePath, fileBuffer, {
           cacheControl: "3600",
@@ -111,10 +141,14 @@ export async function POST(request: Request) {
         });
 
       if (error) {
-        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        console.error("Supabase upload failed:", error);
+        return NextResponse.json(
+          { error: `Upload failed: ${error.message}` },
+          { status: 500 }
+        );
       }
 
-      const publicUrl = supabase.storage
+      const publicUrl = supabaseAdmin.storage
         .from("uploads")
         .getPublicUrl(storagePath).data.publicUrl;
 
@@ -124,10 +158,15 @@ export async function POST(request: Request) {
         contentType: file.type,
         extractedText: extractedText || undefined,
       });
-    } catch (_error) {
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    } catch (error) {
+      console.error("Upload route failed:", error);
+      return NextResponse.json(
+        { error: "Upload failed" },
+        { status: 500 }
+      );
     }
-  } catch (_error) {
+  } catch (error) {
+    console.error("Failed to process upload request:", error);
     return NextResponse.json(
       { error: "Failed to process request" },
       { status: 500 }
