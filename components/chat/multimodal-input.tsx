@@ -203,6 +203,7 @@ function PureMultimodalInput({
           url: attachment.url,
           name: attachment.name,
           mediaType: attachment.contentType,
+          extractedText: attachment.extractedText,
         })),
         {
           type: "text",
@@ -244,12 +245,13 @@ function PureMultimodalInput({
 
       if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+        const { url, pathname, contentType, extractedText } = data;
 
         return {
           url,
           name: pathname,
           contentType,
+          extractedText,
         };
       }
       const { error } = await response.json();
@@ -372,6 +374,7 @@ function PureMultimodalInput({
         )}
 
       <input
+        accept=".pdf,.docx,.txt,image/png,image/jpeg"
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}

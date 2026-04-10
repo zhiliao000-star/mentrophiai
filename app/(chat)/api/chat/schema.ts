@@ -7,9 +7,16 @@ const textPartSchema = z.object({
 
 const filePartSchema = z.object({
   type: z.enum(["file"]),
-  mediaType: z.enum(["image/jpeg", "image/png"]),
+  mediaType: z.enum([
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+  ]),
   name: z.string().min(1).max(100),
   url: z.string().url(),
+  extractedText: z.string().max(20000).optional(),
 });
 
 const partSchema = z.union([textPartSchema, filePartSchema]);

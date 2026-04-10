@@ -77,6 +77,27 @@ export async function POST(request: Request) {
       selectedVisibilityType,
       memoryEnabled = true,
     } = requestBody;
+    const uploadedFileContext =
+      message?.role === "user"
+        ? message.parts
+            .filter(
+              (part): part is typeof part & {
+                type: "file";
+                extractedText?: string;
+                name: string;
+              } => part.type === "file" && typeof part.extractedText === "string"
+            )
+            .map((part) => {
+              const content = part.extractedText?.trim();
+              if (!content) {
+                return null;
+              }
+
+              return `The user uploaded file [${part.name}], content below:\n${content}`;
+            })
+            .filter(Boolean)
+            .join("\n\n")
+        : "";
     const userMessageText =
       message?.role === "user" ? getTextFromMessage(message) : "";
 
@@ -208,6 +229,7 @@ export async function POST(request: Request) {
           model: getLanguageModel(chatModel),
           system: [
             systemPrompt({ requestHints, supportsTools }),
+            uploadedFileContext || null,
             memoryContext
               ? `Relevant long-term memory for this user:\n${memoryContext}`
               : null,
