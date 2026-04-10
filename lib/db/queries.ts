@@ -18,6 +18,7 @@ import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
 import { generateUUID } from "../utils";
+import { supabaseAdmin } from "../supabase/admin";
 import {
   type Chat,
   chat,
@@ -67,15 +68,34 @@ export async function createUser(email: string, password: string) {
 
 export async function createGuestUser() {
   const email = `guest-${Date.now()}`;
-  const password = generateHashedPassword(generateUUID());
 
   try {
-    const result = await getDb()
-      .insert(user)
-      .values({ email, password, isAnonymous: true })
-      .returning({ id: user.id, email: user.email });
+    const inserted = await (supabaseAdmin.from("User") as any)
+      .insert([
+        {
+          id: generateUUID(),
+          email,
+          isAnonymous: true,
+          password: generateHashedPassword(generateUUID()),
+        },
+      ])
+      .select("id,email")
+      .single();
 
-    return result;
+    const { data, error } = inserted as {
+      data: { id: string; email: string } | null;
+      error: { message: string } | null;
+    };
+
+    if (error) {
+      console.error("DB ERROR:", error);
+      throw new ChatbotError(
+        "bad_request:database",
+        "Failed to create guest user"
+      );
+    }
+
+    return data ? [data] : [];
   } catch (error) {
     console.error("Database error in createGuestUser:", error);
     throw new ChatbotError(

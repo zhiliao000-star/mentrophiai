@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useActionState, useEffect, useState } from "react";
 
+import { GoogleOAuthCard } from "@/components/auth/google-oauth-card";
 import { AuthForm } from "@/components/chat/auth-form";
 import { SubmitButton } from "@/components/chat/submit-button";
 import { toast } from "@/components/chat/toast";
@@ -49,6 +50,7 @@ export default function Page() {
       <p className="text-sm text-muted-foreground">
         Sign in to your account to continue
       </p>
+      <GoogleOAuthCard />
       <AuthForm action={handleSubmit} defaultEmail={email}>
         <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
         <p className="text-center text-[13px] text-muted-foreground">
