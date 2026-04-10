@@ -19,6 +19,7 @@ import { SparklesIcon } from "./icons";
 import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
+import { SearchWebResults } from "./search-web";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -214,6 +215,39 @@ const PurePreviewMessage = ({
               )}
             </ToolContent>
           </Tool>
+        </div>
+      );
+    }
+
+    if (type === "tool-searchWeb") {
+      const { toolCallId, state } = part;
+
+      if (state === "input-available" || state === "input-streaming") {
+        return (
+          <div className="w-[min(100%,450px)]" key={toolCallId}>
+            <Tool className="w-full" defaultOpen={true}>
+              <ToolHeader state={state} type="tool-searchWeb" />
+              <ToolContent>
+                <div className="px-4 py-3 text-muted-foreground text-sm">
+                  Searching the web...
+                </div>
+              </ToolContent>
+            </Tool>
+          </div>
+        );
+      }
+
+      if (part.output && "error" in part.output) {
+        return (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50">
+            Error searching web: {String(part.output.error)}
+          </div>
+        );
+      }
+
+      return (
+        <div className="w-full" key={toolCallId}>
+          <SearchWebResults results={part.output?.results ?? []} />
         </div>
       );
     }
