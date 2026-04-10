@@ -18,7 +18,7 @@ import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
 import { generateUUID } from "../utils";
-import { supabaseAdmin } from "../supabase/admin";
+import { getSupabaseAdmin } from "../supabase/admin";
 import {
   type Chat,
   chat,
@@ -70,19 +70,17 @@ export async function createGuestUser() {
   const email = `guest-${Date.now()}`;
 
   try {
-    const inserted = await (supabaseAdmin.from("User") as any)
+    const supabase = getSupabaseAdmin();
+    const { data, error } = (await ((supabase.from("users") as any)
       .insert([
         {
           id: generateUUID(),
           email,
-          isAnonymous: true,
-          password: generateHashedPassword(generateUUID()),
+          is_guest: true,
         },
       ])
       .select("id,email")
-      .single();
-
-    const { data, error } = inserted as {
+      .single())) as {
       data: { id: string; email: string } | null;
       error: { message: string } | null;
     };

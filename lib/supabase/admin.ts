@@ -23,5 +23,3 @@ export function getSupabaseAdmin() {
 
   return supabaseAdminClient;
 }
-
-export const supabaseAdmin = getSupabaseAdmin();

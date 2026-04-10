@@ -74,7 +74,7 @@ export const {
       credentials: {},
       async authorize() {
         const [guestUser] = await createGuestUser();
-        return guestUser ? { ...guestUser, type: "guest" } : null;
+        return guestUser ? ({ ...guestUser, type: "guest" } as const) : null;
       },
     }),
   ],
