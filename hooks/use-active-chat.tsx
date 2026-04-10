@@ -17,6 +17,7 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
+import { useLocalStorage } from "usehooks-ts";
 import { useDataStream } from "@/components/chat/data-stream-provider";
 import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { toast } from "@/components/chat/toast";
@@ -72,6 +73,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
 
   const [input, setInput] = useState("");
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
+  const [memoryEnabled] = useLocalStorage("memory-enabled", true);
 
   const { data: chatData, isLoading } = useSWR(
     isNewChat
@@ -136,6 +138,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
               ? { messages: request.messages }
               : { message: lastMessage }),
             selectedVisibilityType: visibility,
+            memoryEnabled,
             ...request.body,
           },
         };
@@ -257,6 +260,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       isLoading,
       votes,
       showCreditCardAlert,
+      memoryEnabled,
     ]
   );
 

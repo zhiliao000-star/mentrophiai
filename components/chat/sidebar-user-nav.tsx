@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { useLocalStorage } from "usehooks-ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { supabase } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { toast } from "./toast";
 
 function emailToHue(email: string): number {
@@ -32,6 +34,10 @@ export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [memoryEnabled, setMemoryEnabled] = useLocalStorage(
+    "memory-enabled",
+    true
+  );
 
   async function handleSignOut() {
     try {
@@ -90,6 +96,37 @@ export function SidebarUserNav({ user }: { user: User }) {
             >
               {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
             </DropdownMenuItem>
+            <div className="px-2 py-2">
+              <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-[13px]">
+                <span className="text-foreground">Turn Memory</span>
+                <div className="inline-flex rounded-md border border-border/60 bg-muted/40 p-0.5">
+                  <button
+                    className={cn(
+                      "rounded-[5px] px-2 py-1 text-xs transition-colors",
+                      memoryEnabled
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setMemoryEnabled(true)}
+                    type="button"
+                  >
+                    On
+                  </button>
+                  <button
+                    className={cn(
+                      "rounded-[5px] px-2 py-1 text-xs transition-colors",
+                      !memoryEnabled
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setMemoryEnabled(false)}
+                    type="button"
+                  >
+                    Off
+                  </button>
+                </div>
+              </div>
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button

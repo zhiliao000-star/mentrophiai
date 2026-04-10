@@ -31,6 +31,7 @@ export const postRequestBodySchema = z.object({
   message: userMessageSchema.optional(),
   messages: z.array(toolApprovalMessageSchema).optional(),
   selectedVisibilityType: z.enum(["public", "private"]),
+  memoryEnabled: z.boolean().optional().default(true),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

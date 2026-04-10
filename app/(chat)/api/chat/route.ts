@@ -69,7 +69,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, messages, selectedVisibilityType } = requestBody;
+    const {
+      id,
+      message,
+      messages,
+      selectedVisibilityType,
+      memoryEnabled = true,
+    } = requestBody;
     const userMessageText =
       message?.role === "user" ? getTextFromMessage(message) : "";
 
@@ -183,7 +189,7 @@ export async function POST(request: Request) {
     const isReasoningModel = capabilities?.reasoning === true;
     const supportsTools = capabilities?.tools === true;
     const memoryContext =
-      userMessageText.length > 0
+      memoryEnabled && userMessageText.length > 0
         ? await recallMemoriesForPrompt(user.id, userMessageText).catch(
             (error) => {
               console.error("Hindsight recall failed:", error);
@@ -302,7 +308,7 @@ export async function POST(request: Request) {
           .join("\n\n")
           .trim();
 
-        if (userMessageText && assistantReply) {
+        if (memoryEnabled && userMessageText && assistantReply) {
           void hindsightClient
             .retain(
               user.id,
