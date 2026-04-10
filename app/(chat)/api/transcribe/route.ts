@@ -2,8 +2,6 @@ import Groq, { toFile } from "groq-sdk";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
-
 const supportedAudioTypes = new Set([
   "audio/webm",
   "audio/mp4",

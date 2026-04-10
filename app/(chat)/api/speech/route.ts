@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
-
 const SpeechRequestSchema = z.object({
   text: z.string().trim().min(1).max(5000),
 });

@@ -3,8 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createSupabaseServerClient, getAuthenticatedUser } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
-
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
