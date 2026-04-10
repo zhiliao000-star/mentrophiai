@@ -1,9 +1,9 @@
-export const DEFAULT_CHAT_MODEL = "deepseek-v3.2";
+export const DEFAULT_CHAT_MODEL = "moonshotai/kimi-k2.5";
 
 export const titleModel = {
   id: DEFAULT_CHAT_MODEL,
   name: "Auto",
-  provider: "deepseek",
+  provider: "moonshotai",
   description: "Fixed model for title generation",
 };
 
@@ -26,7 +26,7 @@ export const chatModels: ChatModel[] = [
   {
     id: DEFAULT_CHAT_MODEL,
     name: "Auto",
-    provider: "deepseek",
+    provider: "moonshotai",
     description: "Fixed NVIDIA NIM model",
   },
 ];
