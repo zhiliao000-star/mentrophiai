@@ -15,6 +15,7 @@ import { DEFAULT_CHAT_MODEL, getCapabilities } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import executeCode from "@/lib/ai/tools/execute-code";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -221,6 +222,7 @@ export async function POST(request: Request) {
               : [
                   "getWeather",
                   "searchWeb",
+                  "executeCode",
                   "createDocument",
                   "editDocument",
                   "updateDocument",
@@ -231,6 +233,7 @@ export async function POST(request: Request) {
           tools: {
             getWeather,
             searchWeb,
+            executeCode,
             createDocument: createDocument({
               userId: user.id,
               dataStream,

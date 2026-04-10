@@ -13,7 +13,7 @@ export async function GET() {
         {
           id: DEFAULT_CHAT_MODEL,
           name: "Auto",
-          provider: "deepseek",
+          provider: "moonshotai",
           description: "Fixed model for chat",
         },
       ],

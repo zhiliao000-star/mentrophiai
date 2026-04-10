@@ -252,6 +252,37 @@ const PurePreviewMessage = ({
       );
     }
 
+    if (type === "tool-executeCode") {
+      const { toolCallId, state } = part;
+
+      return (
+        <Tool
+          className="w-[min(100%,560px)]"
+          defaultOpen={true}
+          key={toolCallId}
+        >
+          <ToolHeader
+            state={state}
+            title="execute code"
+            type="tool-executeCode"
+          />
+          <ToolContent>
+            {(state === "input-available" || state === "input-streaming") && (
+              <>
+                <ToolInput input={part.input} />
+                <div className="px-1 text-muted-foreground text-sm">
+                  Running code in E2B sandbox...
+                </div>
+              </>
+            )}
+            {state === "output-available" && (
+              <ToolOutput errorText={undefined} output={part.output} />
+            )}
+          </ToolContent>
+        </Tool>
+      );
+    }
+
     if (type === "tool-createDocument") {
       const { toolCallId } = part;
 
