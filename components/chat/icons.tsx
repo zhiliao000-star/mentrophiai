@@ -265,6 +265,46 @@ export const RouteIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
+export const MicrophoneIcon = ({ size = 16 }: { size?: number }) => {
+  return (
+    <svg
+      height={size}
+      strokeLinejoin="round"
+      style={{ color: "currentcolor" }}
+      viewBox="0 0 16 16"
+      width={size}
+    >
+      <path
+        d="M8 10.5C9.51878 10.5 10.75 9.26878 10.75 7.75V4.25C10.75 2.73122 9.51878 1.5 8 1.5C6.48122 1.5 5.25 2.73122 5.25 4.25V7.75C5.25 9.26878 6.48122 10.5 8 10.5Z"
+        fill="transparent"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M3.75 7.25V7.75C3.75 10.0972 5.65279 12 8 12C10.3472 12 12.25 10.0972 12.25 7.75V7.25"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M8 12V14.5"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M5.5 14.5H10.5"
+        fill="transparent"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+};
+
 export const FileIcon = ({ size = 16 }: { size?: number }) => {
   return (
     <svg
