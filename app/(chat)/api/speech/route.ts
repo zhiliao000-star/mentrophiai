@@ -17,6 +17,16 @@ function getElevenLabsClient() {
   return new ElevenLabsClient({ apiKey });
 }
 
+function getVoiceId() {
+  const voiceId = process.env.ELEVENLABS_VOICE_ID;
+
+  if (!voiceId) {
+    throw new Error("Missing ELEVENLABS_VOICE_ID");
+  }
+
+  return voiceId;
+}
+
 export async function POST(request: Request) {
   const user = await getAuthenticatedUser();
 
@@ -34,7 +44,7 @@ export async function POST(request: Request) {
 
     const elevenlabs = getElevenLabsClient();
     const audioStream = await elevenlabs.textToSpeech.convert(
-      "Xb7hH8MSUJpSbSDYk0k2",
+      getVoiceId(),
       {
         text: parsed.data.text,
         modelId: "eleven_multilingual_v2",

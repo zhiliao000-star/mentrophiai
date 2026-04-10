@@ -26,6 +26,7 @@ import { DataStreamHandler } from "./data-stream-handler";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
+import { VoiceMode } from "./voice-mode";
 
 export function ChatShell() {
   const {
@@ -50,6 +51,7 @@ export function ChatShell() {
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
     null
   );
+  const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
@@ -119,6 +121,7 @@ export function ChatShell() {
                     setEditingMessage(null);
                     setInput("");
                   }}
+                  onOpenVoiceMode={() => setIsVoiceModeOpen(true)}
                   selectedVisibilityType={visibilityType}
                   sendMessage={
                     editingMessage
@@ -165,6 +168,11 @@ export function ChatShell() {
           votes={votes}
         />
       </div>
+
+      <VoiceMode
+        isOpen={isVoiceModeOpen}
+        onClose={() => setIsVoiceModeOpen(false)}
+      />
 
       <DataStreamHandler />
 

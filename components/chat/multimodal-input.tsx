@@ -29,7 +29,7 @@ import {
   PromptInputTools,
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
-import { LoaderIcon, MicrophoneIcon, PaperclipIcon, StopIcon } from "./icons";
+import { MicrophoneIcon, PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import {
   type SlashCommand,
@@ -60,6 +60,7 @@ function PureMultimodalInput({
   selectedVisibilityType,
   editingMessage,
   onCancelEdit,
+  onOpenVoiceMode,
   isLoading,
 }: {
   chatId: string;
@@ -78,6 +79,7 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
+  onOpenVoiceMode: () => void;
   isLoading?: boolean;
 }) {
   const router = useRouter();
@@ -183,15 +185,10 @@ function PureMultimodalInput({
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const submitForm = useCallback(() => {
     window.history.pushState(
@@ -338,125 +335,6 @@ function PureMultimodalInput({
     [setAttachments, uploadFile]
   );
 
-  const handleRecordingComplete = useCallback(
-    async (audioBlob: Blob) => {
-      const formData = new FormData();
-      formData.append("file", audioBlob, "recording.webm");
-
-      setIsTranscribing(true);
-
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/transcribe`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-        const payload = (await response.json().catch(() => null)) as
-          | { text?: string; error?: string }
-          | null;
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "Failed to transcribe audio");
-        }
-
-        const transcribedText = payload?.text?.trim() ?? "";
-
-        if (!transcribedText) {
-          toast.error("No speech was detected. Please try again.");
-          return;
-        }
-
-        setInput((currentInput) =>
-          currentInput.trim()
-            ? `${currentInput.trimEnd()} ${transcribedText}`
-            : transcribedText
-        );
-        textareaRef.current?.focus();
-      } catch (error) {
-        console.error("Audio transcription failed:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Failed to transcribe audio"
-        );
-      } finally {
-        setIsTranscribing(false);
-      }
-    },
-    [setInput]
-  );
-
-  const stopRecording = useCallback(() => {
-    const recorder = mediaRecorderRef.current;
-
-    if (!recorder) {
-      return;
-    }
-
-    if (recorder.state !== "inactive") {
-      recorder.stop();
-    }
-
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    mediaStreamRef.current = null;
-    setIsRecording(false);
-  }, []);
-
-  const startRecording = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Voice recording is not supported in this browser.");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
-      });
-
-      audioChunksRef.current = [];
-      mediaRecorderRef.current = recorder;
-      mediaStreamRef.current = stream;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-        audioChunksRef.current = [];
-        await handleRecordingComplete(audioBlob);
-      };
-
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Audio recording failed:", error);
-      toast.error("Microphone access failed. Please check browser permissions.");
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-      setIsRecording(false);
-    }
-  }, [handleRecordingComplete]);
-
-  const handleMicClick = useCallback(async () => {
-    if (isTranscribing) {
-      return;
-    }
-
-    if (isRecording) {
-      stopRecording();
-      return;
-    }
-
-    await startRecording();
-  }, [isRecording, isTranscribing, startRecording, stopRecording]);
-
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) {
@@ -466,13 +344,6 @@ function PureMultimodalInput({
     textarea.addEventListener("paste", handlePaste);
     return () => textarea.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
-
-  useEffect(() => {
-    return () => {
-      mediaRecorderRef.current?.stop();
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    };
-  }, []);
 
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
@@ -629,9 +500,7 @@ function PureMultimodalInput({
               status={status}
             />
             <VoiceInputButton
-              isRecording={isRecording}
-              isTranscribing={isTranscribing}
-              onClick={handleMicClick}
+              onClick={onOpenVoiceMode}
               status={status}
             />
             <Button
@@ -723,35 +592,26 @@ function PureAttachmentsButton({
 const AttachmentsButton = memo(PureAttachmentsButton);
 
 function PureVoiceInputButton({
-  isRecording,
-  isTranscribing,
   onClick,
   status,
 }: {
-  isRecording: boolean;
-  isTranscribing: boolean;
   onClick: () => void;
   status: UseChatHelpers<ChatMessage>["status"];
 }) {
-  const disabled = status === "submitted" || isTranscribing;
+  const disabled = status === "submitted";
 
   return (
     <Button
-      className={cn(
-        "h-7 w-7 rounded-lg border border-border/40 p-1 transition-colors",
-        isRecording
-          ? "border-red-400/60 text-red-500 hover:border-red-400 hover:text-red-600"
-          : "text-foreground hover:border-border hover:text-foreground"
-      )}
+      className="h-7 w-7 rounded-lg border border-border/40 p-1 text-foreground transition-colors hover:border-border hover:text-foreground"
       data-testid="voice-input-button"
       disabled={disabled}
       onClick={(event) => {
         event.preventDefault();
-        void onClick();
+        onClick();
       }}
       variant="ghost"
     >
-      {isTranscribing ? <LoaderIcon /> : <MicrophoneIcon size={14} />}
+      <MicrophoneIcon size={14} />
     </Button>
   );
 }
