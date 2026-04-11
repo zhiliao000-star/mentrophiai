@@ -22,15 +22,12 @@ function getSupportedRecordingMimeType() {
     return null;
   }
 
-  const preferredTypes = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-  ];
+  const preferredTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
 
   return (
-    preferredTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) ??
-    null
+    preferredTypes.find((mimeType) =>
+      MediaRecorder.isTypeSupported(mimeType)
+    ) ?? null
   );
 }
 
@@ -78,8 +75,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     assistantCountRef.current = assistantMessages.length;
   }, [assistantMessages.length]);
 
-  const visualState: OrbState =
-    orbState === "error" ? "error" : "speaking";
+  const visualState: OrbState = orbState === "error" ? "error" : "speaking";
   const visualVolume =
     orbState === "idle"
       ? 0.08
@@ -161,7 +157,10 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   }, [stopAudioPlayback, stopRecording]);
 
   const monitorAnalyser = useCallback(
-    (analyser: AnalyserNode, frameRef: React.MutableRefObject<number | null>) => {
+    (
+      analyser: AnalyserNode,
+      frameRef: React.MutableRefObject<number | null>
+    ) => {
       const data = new Uint8Array(analyser.frequencyBinCount);
 
       const tick = () => {
@@ -204,9 +203,10 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       }
     );
 
-    const payload = (await response.json().catch(() => null)) as
-      | { text?: string; error?: string }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      text?: string;
+      error?: string;
+    } | null;
 
     if (!response.ok) {
       throw new Error(payload?.error || "Failed to transcribe audio");
@@ -220,6 +220,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       stopAudioPlayback();
       setOrbState("speaking");
       setCaption("Speaking...");
+      console.log("开始TTS");
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/speech`,
@@ -233,9 +234,9 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       );
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(payload?.error || "Failed to generate speech");
       }
 
@@ -305,7 +306,8 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream);
 
-      currentMimeTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+      currentMimeTypeRef.current =
+        recorder.mimeType || mimeType || "audio/webm";
       mediaRecorderRef.current = recorder;
       mediaStreamRef.current = stream;
       audioChunksRef.current = [];
@@ -326,6 +328,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       };
 
       recorder.onstop = async () => {
+        console.log("录音完成，开始转文字");
         const audioBlob = new Blob(audioChunksRef.current, {
           type: currentMimeTypeRef.current || "audio/webm",
         });
@@ -337,6 +340,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           setVolume(0);
 
           const text = await transcribeAudio(audioBlob);
+          console.log("转文字结果：" + text);
 
           if (!text) {
             setOrbState("idle");
@@ -354,6 +358,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           setOrbState("connecting");
           setCaption("Thinking...");
 
+          console.log("发送消息：" + text);
           sendMessage({
             role: "user",
             parts: [{ type: "text", text }],
@@ -362,10 +367,14 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           console.error("Voice transcription failed:", error);
           setOrbState("error");
           setCaption(
-            error instanceof Error ? error.message : "Voice transcription failed"
+            error instanceof Error
+              ? error.message
+              : "Voice transcription failed"
           );
           toast.error(
-            error instanceof Error ? error.message : "Voice transcription failed"
+            error instanceof Error
+              ? error.message
+              : "Voice transcription failed"
           );
         }
       };
@@ -380,9 +389,18 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       stopRecording();
       setOrbState("error");
       setCaption("Microphone access failed");
-      toast.error("Microphone access failed. Please check browser permissions.");
+      toast.error(
+        "Microphone access failed. Please check browser permissions."
+      );
     }
-  }, [isOpen, monitorAnalyser, sendMessage, stopAudioPlayback, stopRecording, transcribeAudio]);
+  }, [
+    isOpen,
+    monitorAnalyser,
+    sendMessage,
+    stopAudioPlayback,
+    stopRecording,
+    transcribeAudio,
+  ]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
@@ -433,12 +451,10 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       return;
     }
 
-    const latestAssistant = [...assistantMessages]
-      .reverse()
-      .find((message) => {
-        const text = getTextFromMessage(message);
-        return text.length > 0 && message.id !== lastSpokenAssistantIdRef.current;
-      });
+    const latestAssistant = [...assistantMessages].reverse().find((message) => {
+      const text = getTextFromMessage(message);
+      return text.length > 0 && message.id !== lastSpokenAssistantIdRef.current;
+    });
 
     if (!latestAssistant) {
       pendingAssistantCountRef.current = null;
@@ -454,15 +470,20 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
 
     pendingAssistantCountRef.current = null;
     const text = getTextFromMessage(latestAssistant);
+    console.log("AI回复：" + text);
 
     void speakText(text, latestAssistant.id).catch((error) => {
       console.error("Voice playback failed:", error);
       setOrbState("error");
       setCaption(
-        error instanceof Error ? error.message : "Failed to read the reply aloud"
+        error instanceof Error
+          ? error.message
+          : "Failed to read the reply aloud"
       );
       toast.error(
-        error instanceof Error ? error.message : "Failed to read the reply aloud"
+        error instanceof Error
+          ? error.message
+          : "Failed to read the reply aloud"
       );
     });
   }, [assistantMessages, isOpen, speakText, startListening, status]);
