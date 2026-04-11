@@ -81,7 +81,7 @@ function PureMultimodalInput({
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
   status: UseChatHelpers<ChatMessage>["status"];
-  stop: () => Promise<void>;
+  stop: () => void;
   attachments: Attachment[];
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
   messages: UIMessage[];
@@ -811,7 +811,7 @@ function PureStopButton({
   stop,
   setMessages,
 }: {
-  stop: () => Promise<void>;
+  stop: () => void;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
 }) {
   return (
@@ -820,7 +820,7 @@ function PureStopButton({
       data-testid="stop-button"
       onClick={async (event) => {
         event.preventDefault();
-        await stop();
+        await Promise.resolve(stop());
         setMessages((messages) => messages);
       }}
     >
