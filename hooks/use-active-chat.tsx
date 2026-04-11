@@ -35,7 +35,7 @@ type ActiveChatContextValue = {
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   append: UseChatHelpers<ChatMessage>["append"];
   status: UseChatHelpers<ChatMessage>["status"];
-  stop: () => void;
+  stop: UseChatHelpers<ChatMessage>["stop"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   addToolApprovalResponse: UseChatHelpers<ChatMessage>["addToolApprovalResponse"];
   input: string;
