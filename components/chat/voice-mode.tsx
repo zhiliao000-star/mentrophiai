@@ -37,7 +37,7 @@ type VoiceModeProps = {
 };
 
 export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
-  const { messages, append, status } = useActiveChat();
+  const { messages, sendMessage, status } = useActiveChat();
 
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [volume, setVolume] = useState(0);
@@ -213,7 +213,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         ? "mp4"
         : "webm";
 
-    formData.append("file", audioBlob, `voice-message.${extension}`);
+    formData.sendMessage("file", audioBlob, `voice-message.${extension}`);
 
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/transcribe`,
@@ -386,7 +386,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           setCaption("Thinking...");
 
           console.log("发送消息：" + text);
-          append({
+          sendMessage({
             role: "user",
             parts: [{ type: "text", text }],
           });
