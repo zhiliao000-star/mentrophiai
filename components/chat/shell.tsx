@@ -27,7 +27,7 @@ import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { VoiceMode } from "./voice-mode";
-import { CodingPanel } from "../coding/coding-panel";
+import { CodingChat } from "../coding/coding-chat";
 import type { CodingMode } from "@/lib/coding/types";
 
 export function ChatShell() {
@@ -155,9 +155,7 @@ export function ChatShell() {
                 </div>
               </>
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-                <CodingPanel onBackToChat={() => setMode("chat")} />
-              </div>
+              <CodingChat chatId={chatId} />
             )}
           </div>
         </div>

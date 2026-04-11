@@ -70,6 +70,11 @@ function PureMultimodalInput({
   messages,
   setMessages,
   sendMessage,
+  mode = "chat",
+  codingRepo,
+  onOpenRepoPicker,
+  onSubmitCoding,
+  isCodingRunning,
   className,
   selectedVisibilityType,
   editingMessage,
@@ -89,6 +94,11 @@ function PureMultimodalInput({
   sendMessage:
     | UseChatHelpers<ChatMessage>["sendMessage"]
     | (() => Promise<void>);
+  mode?: "chat" | "coding";
+  codingRepo?: { fullName: string } | null;
+  onOpenRepoPicker?: () => void;
+  onSubmitCoding?: (task: string, repoFullName: string) => void;
+  isCodingRunning?: boolean;
   className?: string;
   selectedVisibilityType: VisibilityType;
   editingMessage?: ChatMessage | null;
@@ -132,7 +142,7 @@ function PureMultimodalInput({
     const val = event.target.value;
     setInput(val);
 
-    if (val.startsWith("/") && !val.includes(" ")) {
+    if (mode === "chat" && val.startsWith("/") && !val.includes(" ")) {
       setSlashOpen(true);
       setSlashQuery(val.slice(1));
       setSlashIndex(0);
@@ -210,6 +220,34 @@ function PureMultimodalInput({
   const [isVoiceInputRecording, setIsVoiceInputRecording] = useState(false);
 
   const submitForm = useCallback(() => {
+    if (mode === "coding") {
+      if (!onSubmitCoding || !codingRepo?.fullName) {
+        toast.error("Select a GitHub repo before running coding tasks.");
+        return;
+      }
+
+      const attachmentContext = attachments
+        .map((attachment) => {
+          const header = `File: ${attachment.name}`;
+          const body = attachment.extractedText
+            ? `\n${attachment.extractedText}`
+            : "";
+          return `${header}${body}`;
+        })
+        .filter(Boolean)
+        .join("\n\n");
+
+      const task = attachmentContext
+        ? `${input.trim()}\n\nAttached files:\n${attachmentContext}`
+        : input.trim();
+
+      onSubmitCoding(task, codingRepo.fullName);
+      setAttachments([]);
+      setLocalStorageInput("");
+      setInput("");
+      return;
+    }
+
     window.history.pushState(
       {},
       "",
@@ -245,6 +283,9 @@ function PureMultimodalInput({
     setInput,
     attachments,
     sendMessage,
+    mode,
+    codingRepo,
+    onSubmitCoding,
     setAttachments,
     setLocalStorageInput,
     width,
@@ -510,6 +551,7 @@ function PureMultimodalInput({
 
       {!editingMessage &&
         !isLoading &&
+        mode === "chat" &&
         messages.length === 0 &&
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
@@ -544,7 +586,7 @@ function PureMultimodalInput({
       <PromptInput
         className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
         onSubmit={() => {
-          if (input.startsWith("/")) {
+          if (mode === "chat" && input.startsWith("/")) {
             const query = input.slice(1).trim();
             const cmd = slashCommands.find((c) => c.name === query);
             if (cmd) {
@@ -600,7 +642,7 @@ function PureMultimodalInput({
           data-testid="multimodal-input"
           onChange={handleInput}
           onKeyDown={(e) => {
-            if (slashOpen) {
+            if (mode === "chat" && slashOpen) {
               const filtered = slashCommands.filter((cmd) =>
                 cmd.name.startsWith(slashQuery.toLowerCase())
               );
@@ -633,7 +675,11 @@ function PureMultimodalInput({
             }
           }}
           placeholder={
-            editingMessage ? "Edit your message..." : "Ask anything..."
+            editingMessage
+              ? "Edit your message..."
+              : mode === "coding"
+                ? "Describe the code change you want..."
+                : "Ask anything..."
           }
           ref={textareaRef}
           value={input}
@@ -641,6 +687,20 @@ function PureMultimodalInput({
         <PromptInputFooter className="px-3 pb-3">
           <PromptInputTools>
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+            {mode === "coding" && (
+              <Button
+                className="h-7 rounded-lg border border-border/40 px-2 text-[12px] text-muted-foreground"
+                data-testid="coding-repo-button"
+                disabled={status === "submitted"}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onOpenRepoPicker?.();
+                }}
+                variant="ghost"
+              >
+                {codingRepo?.fullName ?? "Repo"}
+              </Button>
+            )}
             <VoiceInputButton
               isRecording={isVoiceInputRecording}
               onPressEnd={stopVoiceInputRecording}
@@ -671,7 +731,11 @@ function PureMultimodalInput({
                   : "bg-muted text-muted-foreground/25 cursor-not-allowed"
               )}
               data-testid="send-button"
-              disabled={!input.trim() || uploadQueue.length > 0}
+              disabled={
+                !input.trim() ||
+                uploadQueue.length > 0 ||
+                (mode === "coding" && (!codingRepo || isCodingRunning))
+              }
               status={status}
               variant="secondary"
             >
@@ -706,6 +770,15 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.messages.length !== nextProps.messages.length) {
+      return false;
+    }
+    if (prevProps.mode !== nextProps.mode) {
+      return false;
+    }
+    if (prevProps.codingRepo?.fullName !== nextProps.codingRepo?.fullName) {
+      return false;
+    }
+    if (prevProps.isCodingRunning !== nextProps.isCodingRunning) {
       return false;
     }
 
