@@ -33,7 +33,6 @@ type ActiveChatContextValue = {
   messages: ChatMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
-  append: UseChatHelpers<ChatMessage>["append"];
   status: UseChatHelpers<ChatMessage>["status"];
   stop: UseChatHelpers<ChatMessage>["stop"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
@@ -95,7 +94,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     messages,
     setMessages,
     sendMessage,
-    append,
     status,
     stop,
     regenerate,
@@ -233,7 +231,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       messages,
       setMessages,
       sendMessage,
-      append,
       status,
       stop,
       regenerate,
