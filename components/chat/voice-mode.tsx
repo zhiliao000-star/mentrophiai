@@ -65,6 +65,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   const shouldAutoLoopRef = useRef(false);
   const assistantCountRef = useRef(0);
   const startListeningRef = useRef<(() => Promise<void>) | null>(null);
+  const isStartingRef = useRef(false);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -77,13 +78,8 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     assistantCountRef.current = assistantMessages.length;
   }, [assistantMessages.length]);
 
-  const visualState: OrbState = orbState;
-  const visualVolume =
-    orbState === "idle"
-      ? 0.08
-      : orbState === "connecting"
-        ? 0.18
-        : Math.max(volume, 0.12);
+  const visualState: OrbState = orbState === "error" ? "error" : "speaking";
+  const visualVolume = orbState === "error" ? 0.22 : Math.max(volume, 0.22);
 
   const stopMicMonitoring = useCallback(() => {
     if (micFrameRef.current) {
@@ -240,7 +236,6 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       stopAudioPlayback();
       setOrbState("speaking");
       setCaption("Speaking...");
-      console.log("开始TTS");
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/speech`,
@@ -261,6 +256,9 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       }
 
       const audioBlob = await response.blob();
+      if (!isMountedRef.current) {
+        return;
+      }
       const objectUrl = URL.createObjectURL(audioBlob);
       speakerObjectUrlRef.current = objectUrl;
 
@@ -355,7 +353,6 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           silenceTimeoutRef.current = null;
         }
         if (!isMountedRef.current) return;
-        console.log("录音完成，开始转文字");
         const audioBlob = new Blob(audioChunksRef.current, {
           type: currentMimeTypeRef.current || "audio/webm",
         });
@@ -367,8 +364,6 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           setVolume(0);
 
           const text = await transcribeAudio(audioBlob);
-          console.log("转文字结果：" + text);
-
           if (!text) {
             setOrbState("idle");
             setCaption("I couldn't hear anything. Listening again...");
@@ -385,7 +380,6 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           setOrbState("connecting");
           setCaption("Thinking...");
 
-          console.log("发送消息：" + text);
           sendMessage({
             role: "user",
             parts: [{ type: "text", text }],
@@ -446,6 +440,24 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     }
   }, [orbState, stopAudioPlayback, stopRecording]);
 
+  const handleOrbStart = useCallback(() => {
+    if (isStartingRef.current || orbState === "listening") {
+      return;
+    }
+
+    isStartingRef.current = true;
+
+    void startListening()
+      .catch(() => {})
+      .finally(() => {
+        isStartingRef.current = false;
+      });
+  }, [orbState, startListening]);
+
+  const handleOrbStop = useCallback(() => {
+    stopListening();
+  }, [stopListening]);
+
   useEffect(() => {
     if (!isOpen) {
       cleanupVoiceMode();
@@ -496,8 +508,6 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
 
     pendingAssistantCountRef.current = null;
     const text = getTextFromMessage(latestAssistant);
-    console.log("AI回复：" + text);
-
     void speakText(text, latestAssistant.id).catch((error) => {
       console.error("Voice playback failed:", error);
       setOrbState("error");
@@ -541,15 +551,13 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       <div className="relative z-10 flex w-full max-w-4xl flex-col items-center justify-center px-6">
         <div className="mb-10 flex items-center justify-center">
           <Orb
-            onStart={() => {
-              void startListening();
-            }}
-            onStop={stopListening}
-            size={360}
+            size={420}
+            onStart={handleOrbStart}
+            onStop={handleOrbStop}
             state={visualState}
             style={{
               color: "#ffffff",
-              filter: "brightness(1.2) contrast(1.08)",
+              filter: "brightness(1.35) contrast(1.15)",
             }}
             theme="bars"
             volume={visualVolume}
