@@ -4,16 +4,22 @@ import { PanelLeftIcon } from "lucide-react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
+import { ModeSwitch } from "./mode-switch";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
+import type { CodingMode } from "@/lib/coding/types";
 
 function PureChatHeader({
   chatId,
   selectedVisibilityType,
   isReadonly,
+  mode,
+  onModeChange,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
+  mode: CodingMode;
+  onModeChange: (mode: CodingMode) => void;
 }) {
   const { state, toggleSidebar, isMobile } = useSidebar();
 
@@ -31,6 +37,7 @@ function PureChatHeader({
       >
         <PanelLeftIcon className="size-4" />
       </Button>
+      <ModeSwitch mode={mode} onChange={onModeChange} />
       {!isReadonly && (
         <VisibilitySelector
           chatId={chatId}
@@ -45,6 +52,7 @@ export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
   return (
     prevProps.chatId === nextProps.chatId &&
     prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
-    prevProps.isReadonly === nextProps.isReadonly
+    prevProps.isReadonly === nextProps.isReadonly &&
+    prevProps.mode === nextProps.mode
   );
 });

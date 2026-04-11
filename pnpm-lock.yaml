@@ -122,6 +122,9 @@ importers:
       groq-sdk:
         specifier: ^1.1.2
         version: 1.1.2
+      jose:
+        specifier: ^6.2.2
+        version: 6.2.2
       katex:
         specifier: ^0.16.28
         version: 0.16.28
