@@ -818,9 +818,9 @@ function PureStopButton({
     <Button
       className="h-7 w-7 rounded-xl bg-foreground p-1 text-background transition-all duration-200 hover:opacity-85 active:scale-95 disabled:bg-muted disabled:text-muted-foreground/25 disabled:cursor-not-allowed"
       data-testid="stop-button"
-      onClick={async (event) => {
+      onClick={(event) => {
         event.preventDefault();
-        await Promise.resolve(stop());
+        stop();
         setMessages((messages) => messages);
       }}
     >
