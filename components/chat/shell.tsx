@@ -142,7 +142,7 @@ export function ChatShell() {
                   setInput={setInput}
                   setMessages={setMessages}
                   status={status}
-                  stop={stop}
+                  stop={async () => { stop(); }}
                 />
               )}
             </div>
@@ -164,7 +164,7 @@ export function ChatShell() {
           setInput={setInput}
           setMessages={setMessages}
           status={status}
-          stop={stop}
+          stop={async () => { stop(); }}
           votes={votes}
         />
       </div>
