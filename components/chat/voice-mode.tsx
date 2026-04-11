@@ -37,7 +37,7 @@ type VoiceModeProps = {
 };
 
 export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
-  const { messages, sendMessage, status } = useActiveChat();
+  const { messages, append, status } = useActiveChat();
 
   const [orbState, setOrbState] = useState<OrbState>("idle");
   const [volume, setVolume] = useState(0);
@@ -386,7 +386,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           setCaption("Thinking...");
 
           console.log("发送消息：" + text);
-          sendMessage({
+          append({
             role: "user",
             parts: [{ type: "text", text }],
           });
@@ -423,7 +423,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   }, [
     isOpen,
     monitorAnalyser,
-    sendMessage,
+    append,
     stopAudioPlayback,
     stopRecording,
     transcribeAudio,
