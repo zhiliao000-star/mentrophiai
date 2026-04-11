@@ -213,7 +213,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         ? "mp4"
         : "webm";
 
-    formData.sendMessage("file", audioBlob, `voice-message.${extension}`);
+    formData.append("file", audioBlob, `voice-message.${extension}`);
 
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/transcribe`,
@@ -423,7 +423,6 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   }, [
     isOpen,
     monitorAnalyser,
-    append,
     stopAudioPlayback,
     stopRecording,
     transcribeAudio,

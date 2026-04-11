@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type SupabaseUser = {
   id: string;
@@ -15,6 +15,7 @@ type SupabaseUser = {
 export function GoogleOAuthCard() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [supabase] = useState(() => createSupabaseBrowserClient());
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);

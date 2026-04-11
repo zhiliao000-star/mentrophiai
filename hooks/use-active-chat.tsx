@@ -249,7 +249,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       messages,
       setMessages,
       sendMessage,
-      append,
       status,
       stop,
       regenerate,

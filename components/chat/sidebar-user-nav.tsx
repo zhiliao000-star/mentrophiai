@@ -18,7 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { supabase } from "@/lib/supabase/client";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "./toast";
 
@@ -34,6 +34,7 @@ export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [supabase] = useState(() => createSupabaseBrowserClient());
   const [memoryEnabled, setMemoryEnabled] = useLocalStorage(
     "memory-enabled",
     true
