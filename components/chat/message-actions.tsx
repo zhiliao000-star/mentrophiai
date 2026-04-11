@@ -36,10 +36,6 @@ export function PureMessageActions({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
 
-  if (isLoading) {
-    return null;
-  }
-
   const textFromParts = message.parts
     ?.filter((part) => part.type === "text")
     .map((part) => part.text)
@@ -65,6 +61,10 @@ export function PureMessageActions({
       }
     };
   }, []);
+
+  if (isLoading) {
+    return null;
+  }
 
   const handlePlay = async () => {
     if (!textFromParts) {
