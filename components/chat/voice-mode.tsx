@@ -77,7 +77,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
     assistantCountRef.current = assistantMessages.length;
   }, [assistantMessages.length]);
 
-  const visualState: OrbState = orbState === "error" ? "error" : "speaking";
+  const visualState: OrbState = orbState;
   const visualVolume =
     orbState === "idle"
       ? 0.08
