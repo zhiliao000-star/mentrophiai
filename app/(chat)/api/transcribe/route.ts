@@ -2,17 +2,6 @@ import Groq, { toFile } from "groq-sdk";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 
-const supportedAudioTypes = new Set([
-  "audio/webm",
-  "audio/mp4",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/m4a",
-  "audio/x-m4a",
-]);
-
 function getGroqClient() {
   const apiKey = process.env.GROQ_API_KEY;
 
@@ -35,12 +24,8 @@ export async function POST(request: Request) {
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "No audio file uploaded" }, { status: 400 });
-    }
-
-    if (!supportedAudioTypes.has(file.type)) {
       return NextResponse.json(
-        { error: "Unsupported audio type. Use webm, mp4, wav, or mp3." },
+        { error: "No audio file uploaded" },
         { status: 400 }
       );
     }
@@ -48,13 +33,28 @@ export async function POST(request: Request) {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const groq = getGroqClient();
 
-    const transcription = await groq.audio.transcriptions.create({
-      file: await toFile(fileBuffer, file.name || "recording.webm", {
-        type: file.type,
-      }),
-      model: "whisper-large-v3",
-      response_format: "verbose_json",
-    });
+    let transcription;
+
+    try {
+      // First try with webm
+      transcription = await groq.audio.transcriptions.create({
+        file: await toFile(fileBuffer, "audio.webm", {
+          type: "audio/webm",
+        }),
+        model: "whisper-large-v3",
+        response_format: "verbose_json",
+      });
+    } catch (error) {
+      console.warn("Transcription failed with webm, trying mp4:", error);
+      // If webm fails, try with mp4
+      transcription = await groq.audio.transcriptions.create({
+        file: await toFile(fileBuffer, "audio.mp4", {
+          type: "audio/mp4",
+        }),
+        model: "whisper-large-v3",
+        response_format: "verbose_json",
+      });
+    }
 
     return NextResponse.json({
       text: transcription.text?.trim() ?? "",
