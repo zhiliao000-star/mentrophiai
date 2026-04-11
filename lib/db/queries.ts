@@ -236,9 +236,8 @@ export async function upsertGitHubInstallation({
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: githubInstallation.userId,
+      target: [githubInstallation.userId, githubInstallation.installationId],
       set: {
-        installationId,
         accountId: accountId ?? null,
         accountLogin: accountLogin ?? null,
         accountType: accountType ?? null,
@@ -247,11 +246,27 @@ export async function upsertGitHubInstallation({
     });
 }
 
-export async function getGitHubInstallationByUserId(userId: string) {
-  const [installation] = await getDb()
+export async function getGitHubInstallationsByUserId(userId: string) {
+  return await getDb()
     .select()
     .from(githubInstallation)
     .where(eq(githubInstallation.userId, userId))
+    .orderBy(desc(githubInstallation.updatedAt));
+}
+
+export async function getGitHubInstallationByUserAndId(
+  userId: string,
+  installationId: string
+) {
+  const [installation] = await getDb()
+    .select()
+    .from(githubInstallation)
+    .where(
+      and(
+        eq(githubInstallation.userId, userId),
+        eq(githubInstallation.installationId, installationId)
+      )
+    )
     .limit(1);
   return installation ?? null;
 }

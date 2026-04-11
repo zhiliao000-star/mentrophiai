@@ -49,7 +49,11 @@ export function CodingPanel({ onBackToChat }: CodingPanelProps) {
   const [summary, setSummary] = useState<string>("");
   const [prUrl, setPrUrl] = useState<string | null>(null);
 
-  const isSubmitDisabled = !task.trim() || !selectedRepo || isRunning;
+  const isSubmitDisabled =
+    !task.trim() ||
+    !selectedRepo ||
+    !selectedRepo.installationId ||
+    isRunning;
 
   const logLines = useMemo(
     () =>
@@ -78,6 +82,7 @@ export function CodingPanel({ onBackToChat }: CodingPanelProps) {
         body: JSON.stringify({
           task,
           repoFullName: selectedRepo.fullName,
+          installationId: selectedRepo.installationId,
         }),
       }
     );

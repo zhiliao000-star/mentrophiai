@@ -65,6 +65,36 @@ export async function getInstallationToken(installationId: string) {
   return payload.token;
 }
 
+type InstallationInfoResponse = {
+  id: number;
+  account?: {
+    id?: number;
+    login?: string;
+    type?: string;
+  };
+};
+
+export async function getInstallationInfo(installationId: string) {
+  const jwt = await createAppJwt();
+  const response = await fetch(
+    `${GITHUB_API_BASE}/app/installations/${installationId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "mentrophi-ai",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`GitHub installation lookup failed: ${text}`);
+  }
+
+  return (await response.json()) as InstallationInfoResponse;
+}
+
 export async function listInstallationRepos(
   installationId: string
 ): Promise<CodingRepo[]> {

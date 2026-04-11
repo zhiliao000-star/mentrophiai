@@ -9,11 +9,12 @@ import {
 } from "@/lib/coding/github";
 import type { CodingEvent } from "@/lib/coding/types";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
-import { getGitHubInstallationByUserId } from "@/lib/db/queries";
+import { getGitHubInstallationByUserAndId } from "@/lib/db/queries";
 
 const RunSchema = z.object({
   task: z.string().trim().min(1).max(4000),
   repoFullName: z.string().trim().min(1),
+  installationId: z.string().trim().min(1),
 });
 
 const DEFAULT_MODEL = "moonshotai/kimi-k2.5";
@@ -78,10 +79,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing E2B_API_KEY" }, { status: 500 });
   }
 
-  const installation = await getGitHubInstallationByUserId(user.id);
+  // Security: only allow installations that are verified and stored for this user.
+  const installation = await getGitHubInstallationByUserAndId(
+    user.id,
+    parsed.data.installationId
+  );
   if (!installation) {
     return NextResponse.json(
-      { error: "GitHub not connected. Connect your GitHub App first." },
+      {
+        error:
+          "GitHub installation not found for this user. Connect your GitHub App first.",
+      },
       { status: 400 }
     );
   }
@@ -101,9 +109,8 @@ export async function POST(request: Request) {
       await send({ type: "status", message: "Starting coding session..." });
       await send({ type: "step", step: "reading repo", status: "active" });
 
-      const repoList = await listInstallationRepos(
-        installation.installationId
-      );
+      // Security: verify the selected repo is accessible for this installation.
+      const repoList = await listInstallationRepos(installation.installationId);
       const repoAllowed = repoList.some(
         (repo) => repo.fullName === repoFullName
       );

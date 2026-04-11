@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   uuid,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -129,15 +130,23 @@ export const stream = pgTable(
 
 export type Stream = InferSelectModel<typeof stream>;
 
-export const githubInstallation = pgTable("GitHubInstallation", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  userId: uuid("userId").notNull(),
-  installationId: varchar("installationId", { length: 64 }).notNull(),
-  accountId: varchar("accountId", { length: 64 }),
-  accountLogin: text("accountLogin"),
-  accountType: varchar("accountType", { length: 32 }),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
-});
+export const githubInstallation = pgTable(
+  "GitHubInstallation",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("userId").notNull(),
+    installationId: varchar("installationId", { length: 64 }).notNull(),
+    accountId: varchar("accountId", { length: 64 }),
+    accountLogin: text("accountLogin"),
+    accountType: varchar("accountType", { length: 32 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueUserInstallation: uniqueIndex(
+      "GitHubInstallation_user_installation_unique"
+    ).on(table.userId, table.installationId),
+  })
+);
 
 export type GitHubInstallation = InferSelectModel<typeof githubInstallation>;

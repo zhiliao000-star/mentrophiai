@@ -7,6 +7,7 @@ export type CodingRepo = {
   owner: string;
   defaultBranch: string;
   private: boolean;
+  installationId?: string;
 };
 
 export type CodingEvent =
