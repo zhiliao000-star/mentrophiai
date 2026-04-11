@@ -22,6 +22,7 @@ import {
   chat,
   type DBMessage,
   document,
+  githubInstallation,
   message,
   type Suggestion,
   stream,
@@ -209,6 +210,50 @@ export async function saveMessages({ messages }: { messages: DBMessage[] }) {
   } catch (_error) {
     throw new ChatbotError("bad_request:database", "Failed to save messages");
   }
+}
+
+export async function upsertGitHubInstallation({
+  userId,
+  installationId,
+  accountId,
+  accountLogin,
+  accountType,
+}: {
+  userId: string;
+  installationId: string;
+  accountId?: string | null;
+  accountLogin?: string | null;
+  accountType?: string | null;
+}) {
+  return await getDb()
+    .insert(githubInstallation)
+    .values({
+      userId,
+      installationId,
+      accountId: accountId ?? null,
+      accountLogin: accountLogin ?? null,
+      accountType: accountType ?? null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: githubInstallation.userId,
+      set: {
+        installationId,
+        accountId: accountId ?? null,
+        accountLogin: accountLogin ?? null,
+        accountType: accountType ?? null,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function getGitHubInstallationByUserId(userId: string) {
+  const [installation] = await getDb()
+    .select()
+    .from(githubInstallation)
+    .where(eq(githubInstallation.userId, userId))
+    .limit(1);
+  return installation ?? null;
 }
 
 export async function updateMessage({

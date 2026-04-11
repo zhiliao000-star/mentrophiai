@@ -15,6 +15,13 @@
       "when": 1710000001000,
       "tag": "0001_drop_local_user_fks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1710000002000,
+      "tag": "0002_github_installation",
+      "breakpoints": true
     }
   ]
 }

@@ -28,11 +28,6 @@ function getGitHubPrivateKey() {
   return rawKey.replace(/\\n/g, "\n");
 }
 
-export function getInstallationIdForUser(): string | null {
-  // TODO: Store and look up installation IDs per user (e.g., in DB linked to Supabase user).
-  return process.env.GITHUB_APP_INSTALLATION_ID ?? null;
-}
-
 async function createAppJwt() {
   const privateKey = await importPKCS8(
     getGitHubPrivateKey(),

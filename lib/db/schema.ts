@@ -128,3 +128,16 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const githubInstallation = pgTable("GitHubInstallation", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId").notNull(),
+  installationId: varchar("installationId", { length: 64 }).notNull(),
+  accountId: varchar("accountId", { length: 64 }),
+  accountLogin: text("accountLogin"),
+  accountType: varchar("accountType", { length: 32 }),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type GitHubInstallation = InferSelectModel<typeof githubInstallation>;
