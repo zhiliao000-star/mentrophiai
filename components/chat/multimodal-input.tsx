@@ -18,7 +18,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
-import { DEFAULT_CHAT_MODEL, chatModels } from "@/lib/ai/models";
+import { chatModels, DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -29,12 +29,7 @@ import {
   PromptInputTools,
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
-import {
-  MicrophoneIcon,
-  PaperclipIcon,
-  StopIcon,
-  WaveformIcon,
-} from "./icons";
+import { MicrophoneIcon, PaperclipIcon, StopIcon, WaveformIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import {
   type SlashCommand,
@@ -55,15 +50,12 @@ function getSupportedRecordingMimeType() {
     return null;
   }
 
-  const preferredTypes = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-  ];
+  const preferredTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
 
   return (
-    preferredTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) ??
-    null
+    preferredTypes.find((mimeType) =>
+      MediaRecorder.isTypeSupported(mimeType)
+    ) ?? null
   );
 }
 
@@ -89,7 +81,7 @@ function PureMultimodalInput({
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
   status: UseChatHelpers<ChatMessage>["status"];
-  stop: () => void;
+  stop: () => Promise<void>;
   attachments: Attachment[];
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
   messages: UIMessage[];
@@ -380,9 +372,10 @@ function PureMultimodalInput({
       }
     );
 
-    const payload = (await response.json().catch(() => null)) as
-      | { text?: string; error?: string }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      text?: string;
+      error?: string;
+    } | null;
 
     if (!response.ok) {
       throw new Error(payload?.error || "Failed to transcribe audio");
@@ -425,7 +418,8 @@ function PureMultimodalInput({
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream);
 
-      currentMimeTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+      currentMimeTypeRef.current =
+        recorder.mimeType || mimeType || "audio/webm";
       mediaRecorderRef.current = recorder;
       mediaStreamRef.current = stream;
       audioChunksRef.current = [];
@@ -459,7 +453,9 @@ function PureMultimodalInput({
         } catch (error) {
           console.error("Voice input transcription failed:", error);
           toast.error(
-            error instanceof Error ? error.message : "Failed to transcribe audio"
+            error instanceof Error
+              ? error.message
+              : "Failed to transcribe audio"
           );
         }
       };
@@ -471,7 +467,9 @@ function PureMultimodalInput({
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
       setIsVoiceInputRecording(false);
-      toast.error("Microphone access failed. Please check browser permissions.");
+      toast.error(
+        "Microphone access failed. Please check browser permissions."
+      );
     }
   }, [setInput, status, transcribeVoiceInput]);
 
@@ -642,22 +640,16 @@ function PureMultimodalInput({
         />
         <PromptInputFooter className="px-3 pb-3">
           <PromptInputTools>
-            <AttachmentsButton
-              fileInputRef={fileInputRef}
-              status={status}
-            />
+            <AttachmentsButton fileInputRef={fileInputRef} status={status} />
             <VoiceInputButton
               isRecording={isVoiceInputRecording}
+              onPressEnd={stopVoiceInputRecording}
               onPressStart={() => {
                 void startVoiceInputRecording();
               }}
-              onPressEnd={stopVoiceInputRecording}
               status={status}
             />
-            <OpenVoiceModeButton
-              onClick={onOpenVoiceMode}
-              status={status}
-            />
+            <OpenVoiceModeButton onClick={onOpenVoiceMode} status={status} />
             <Button
               className="h-7 max-w-[200px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground"
               data-testid="model-selector"
@@ -771,8 +763,8 @@ function PureVoiceInputButton({
         event.preventDefault();
         onPressStart();
       }}
-      onMouseUp={onPressEnd}
       onMouseLeave={onPressEnd}
+      onMouseUp={onPressEnd}
       onTouchEnd={(event) => {
         event.preventDefault();
         onPressEnd();
@@ -819,16 +811,16 @@ function PureStopButton({
   stop,
   setMessages,
 }: {
-  stop: () => void;
+  stop: () => Promise<void>;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
 }) {
   return (
     <Button
       className="h-7 w-7 rounded-xl bg-foreground p-1 text-background transition-all duration-200 hover:opacity-85 active:scale-95 disabled:bg-muted disabled:text-muted-foreground/25 disabled:cursor-not-allowed"
       data-testid="stop-button"
-      onClick={(event) => {
+      onClick={async (event) => {
         event.preventDefault();
-        stop();
+        await stop();
         setMessages((messages) => messages);
       }}
     >
