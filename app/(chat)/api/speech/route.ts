@@ -7,24 +7,20 @@ const SpeechRequestSchema = z.object({
   text: z.string().trim().min(1).max(5000),
 });
 
+const DEFAULT_VOICE_ID = "Xb7hH8MSUJpSbSDYk0k2";
+
 function getElevenLabsClient() {
   const apiKey = process.env.ELEVENLABS_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Missing ELEVENLABS_API_KEY");
+    return null;
   }
 
   return new ElevenLabsClient({ apiKey });
 }
 
 function getVoiceId() {
-  const voiceId = process.env.ELEVENLABS_VOICE_ID;
-
-  if (!voiceId) {
-    throw new Error("Missing ELEVENLABS_VOICE_ID");
-  }
-
-  return voiceId;
+  return process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
 }
 
 export async function POST(request: Request) {
@@ -43,6 +39,14 @@ export async function POST(request: Request) {
     }
 
     const elevenlabs = getElevenLabsClient();
+
+    if (!elevenlabs) {
+      return NextResponse.json(
+        { error: "Missing ELEVENLABS_API_KEY" },
+        { status: 500 }
+      );
+    }
+
     const audioStream = await elevenlabs.textToSpeech.convert(
       getVoiceId(),
       {
@@ -61,7 +65,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Text-to-speech failed:", error);
     return NextResponse.json(
-      { error: "Failed to generate speech" },
+      {
+        error: "Failed to generate speech",
+      },
       { status: 500 }
     );
   }
