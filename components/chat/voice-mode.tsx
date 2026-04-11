@@ -65,6 +65,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   const shouldAutoLoopRef = useRef(false);
   const assistantCountRef = useRef(0);
   const startListeningRef = useRef<(() => Promise<void>) | null>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const assistantMessages = useMemo(
     () => messages.filter((message) => message.role === "assistant"),
@@ -128,6 +129,11 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   }, [stopSpeakerMonitoring]);
 
   const stopRecording = useCallback(() => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
     const recorder = mediaRecorderRef.current;
 
     if (recorder && recorder.state !== "inactive") {
@@ -159,7 +165,8 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   const monitorAnalyser = useCallback(
     (
       analyser: AnalyserNode,
-      frameRef: React.MutableRefObject<number | null>
+      frameRef: React.MutableRefObject<number | null>,
+      onSilence?: () => void
     ) => {
       const data = new Uint8Array(analyser.frequencyBinCount);
 
@@ -177,6 +184,18 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         );
 
         setVolume((current) => current + (normalized - current) * 0.35);
+
+        if (normalized < 0.01) {
+          if (!silenceTimeoutRef.current && onSilence) {
+            silenceTimeoutRef.current = setTimeout(() => {
+              onSilence();
+            }, 2000);
+          }
+        } else if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
+
         frameRef.current = requestAnimationFrame(tick);
       };
 
@@ -292,6 +311,8 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       return;
     }
 
+    silenceTimeoutRef.current = null;
+
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error("Voice recording is not supported in this browser.");
       return;
@@ -328,6 +349,10 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       };
 
       recorder.onstop = async () => {
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
         console.log("录音完成，开始转文字");
         const audioBlob = new Blob(audioChunksRef.current, {
           type: currentMimeTypeRef.current || "audio/webm",
@@ -379,7 +404,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
         }
       };
 
-      monitorAnalyser(analyser, micFrameRef);
+      monitorAnalyser(analyser, micFrameRef, stopRecording);
       await audioContext.resume();
       recorder.start();
       setOrbState("listening");
