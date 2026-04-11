@@ -66,6 +66,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   const assistantCountRef = useRef(0);
   const startListeningRef = useRef<(() => Promise<void>) | null>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   const assistantMessages = useMemo(
     () => messages.filter((message) => message.role === "assistant"),
@@ -353,6 +354,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           clearTimeout(silenceTimeoutRef.current);
           silenceTimeoutRef.current = null;
         }
+        if (!isMountedRef.current) return;
         console.log("录音完成，开始转文字");
         const audioBlob = new Blob(audioChunksRef.current, {
           type: currentMimeTypeRef.current || "audio/webm",
@@ -515,6 +517,7 @@ export function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       cleanupVoiceMode();
     };
   }, [cleanupVoiceMode]);
